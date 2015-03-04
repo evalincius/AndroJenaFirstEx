@@ -2,6 +2,19 @@ package es.deusto.deustotech.androjena;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.AsyncTask;
+import android.os.BatteryManager;
+import android.os.Bundle;
+import android.widget.TextView;
 
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntModelSpec;
@@ -11,17 +24,20 @@ import com.hp.hpl.jena.query.QueryExecutionFactory;
 import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.ResultSetFormatter;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.vocabulary.OWL;
-import com.hp.hpl.jena.vocabulary.RDF;
-import com.hp.hpl.jena.vocabulary.RDFS;
-
-import android.app.Activity;
-import android.app.ProgressDialog;
-import android.os.AsyncTask;
-import android.os.Bundle;
 
 public class MainActivity extends Activity {
 	private ProgressDialog progressDialog;
+	private Timer timer;
+	private float draw;
+	private float drained;
+	private float Reasonerdrained;
+	private BroadcastReceiver batteryInfoReceiver;
+	private String firstKeyName;
+	private String secondKeyName;
+
+
+
+	
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -32,10 +48,12 @@ public class MainActivity extends Activity {
 		progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER); 
 		// better yet - use a string resource getString(R.string.your_message)
 		progressDialog.setMessage("Loading data"); 
+		progressDialog.setCanceledOnTouchOutside(false);
 		// display dialog
 		progressDialog.show(); 
-		 
-		 
+		Intent myIntent = getIntent(); // gets the previously created intent
+		 firstKeyName = myIntent.getStringExtra("firstKeyName"); // will return "FirstKeyValue"
+		 secondKeyName= myIntent.getStringExtra("secondKeyName");
 		// start async task
 		new MyAsyncTaskClass().execute();  
 		
@@ -71,25 +89,17 @@ public class MainActivity extends Activity {
     				"where {?X rdf:type ub:GraduateStudent . "+
     				"?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>} ";
 
-    				
-    				
-    		        //"prefix pizza: <www.co-ode.org/ontologies/pizza/pizza.owl#> "+        
-    		        //"prefix rdfs: <" + RDFS.getURI() + "> "           +
-    		        //"prefix owl: <" + OWL.getURI() + "> "             +
-    		        //"select *"+ 
-    		        //"FROM <http://www.co-ode.org/ontologies/pizza/pizza.owl#>"+
-    		        //"where {?Y rdfs:subClassOf ?X ."+
-    		        //"?X owl:someValuesFrom pizza:MushroomTopping"+
-    		        //"}";
     		Query query = QueryFactory.create(queryString);
     		QueryExecution qe = QueryExecutionFactory.create(query, model);
+    		start();
     		com.hp.hpl.jena.query.ResultSet results =  qe.execSelect();
-
     		ResultSetFormatter.out(System.out, results, query);
-    		
+    		Reasonerdrained = drained;
+    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained");
+    		System.out.println("Intent" + firstKeyName);
     		qe.close();
     		
-    		finish();
+    		//finish();
     		
         	
             return null;
@@ -99,6 +109,62 @@ public class MainActivity extends Activity {
         protected void onPostExecute(Void result) {
             // put here everything that needs to be done after your async task finishes
             progressDialog.dismiss();
+            stop();
+            finish();
+            
         }
+        
 }
+	public  float bat(){		
+        registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        batteryInfoReceiver = new BroadcastReceiver() {
+			@Override
+			public void onReceive(Context context, Intent intent) {			
+				int  plugged= intent.getIntExtra(BatteryManager.EXTRA_PLUGGED,0);
+				String  technology= intent.getExtras().getString(BatteryManager.EXTRA_TECHNOLOGY);
+				int  temperature= intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE,0);
+				int  voltage= intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE,0);				
+				
+				BatteryManager mBatteryManager =
+						(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
+						Long energy =
+						mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);					
+				float currentdraw = energy;
+				draw = currentdraw;		
+				((TextView)findViewById(R.id.textView)).setText("              ANDROJENA REASONER"+"\n"+"Plugged: "+plugged+"\n"+
+						"Technology: "+technology+"\n"+
+						"Temperature: "+temperature+"\n"+
+						"Voltage: "+voltage+"\n"+
+						"Current mA = " + energy + "mA"+ "\n"+
+						"AndroJena reasoner Drained = " + Reasonerdrained + "mA"+ "\n"+
+						"Currentlly Drained = " + drained + "mAh"+ "\n");
+
+			}
+		};
+		return draw;
+	}
+	
+	
+	public void start() {
+	    if(timer != null) {
+	        return;
+	    }
+	    timer = new Timer();	   
+	    timer.schedule(new TimerTask() {
+	        public void run() {	            
+	           // draw = draw + (bat());
+	        	float curret =bat(); 
+	        	drained =drained +(curret/7200);
+	            		//System.out.println("Current mA = " + curret + "mA"+ "\n"+
+						//"Capacity Drained = " + drained + "mAh"+ "\n");
+						
+	    		//batteryInfo=(TextView)findViewById(R.id.textView);
+
+	       }
+	   }, 0, 500 );
+	}
+	public void stop() {
+	    timer.cancel();
+	    timer = null;
+	}
 }
