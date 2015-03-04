@@ -51,7 +51,7 @@ public class MainActivity extends Activity {
     		//InputStream in = FileManager.get().open( inputFileName );
     		InputStream in = null;
     		try {
-    			in = getAssets().open("full-lubm.owl");
+    			in = getAssets().open("b.owl");
     		} catch (IOException e) {
     			// TODO Auto-generated catch block
     			e.printStackTrace();
