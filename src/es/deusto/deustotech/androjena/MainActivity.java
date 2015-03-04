@@ -1,5 +1,8 @@
 package es.deusto.deustotech.androjena;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Timer;
@@ -24,6 +27,7 @@ import com.hp.hpl.jena.query.QueryExecutionFactory;
 import com.hp.hpl.jena.query.QueryFactory;
 import com.hp.hpl.jena.query.ResultSetFormatter;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
+import com.hp.hpl.jena.util.FileManager;
 
 public class MainActivity extends Activity {
 	private ProgressDialog progressDialog;
@@ -32,8 +36,7 @@ public class MainActivity extends Activity {
 	private float drained;
 	private float Reasonerdrained;
 	private BroadcastReceiver batteryInfoReceiver;
-	private String firstKeyName;
-	private String secondKeyName;
+	private String ontologyName;
 
 
 
@@ -52,8 +55,7 @@ public class MainActivity extends Activity {
 		// display dialog
 		progressDialog.show(); 
 		Intent myIntent = getIntent(); // gets the previously created intent
-		 firstKeyName = myIntent.getStringExtra("firstKeyName"); // will return "FirstKeyValue"
-		 secondKeyName= myIntent.getStringExtra("secondKeyName");
+		ontologyName = myIntent.getStringExtra("ontologyName"); // will return "FirstKeyValue"
 		// start async task
 		new MyAsyncTaskClass().execute();  
 		
@@ -65,11 +67,19 @@ public class MainActivity extends Activity {
         protected Void doInBackground(Void... params) {
            // do your thing
         	OntModel model = ModelFactory.createOntologyModel( OntModelSpec.OWL_MEM_MICRO_RULE_INF);
-    		String inputFileName="univ-bench.owl";
-    		//InputStream in = FileManager.get().open( inputFileName );
+    		//String inputFileName="univ-bench.owl";
+        	File file = new File("storage/emulated/0/Download/" +ontologyName);
+
     		InputStream in = null;
-    		try {
-    			in = getAssets().open("b.owl");
+			try {
+				in = new FileInputStream(file);
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    		//InputStream in = null;
+    		/**try {
+    			//in = getAssets().open(ontologyName);
     		} catch (IOException e) {
     			// TODO Auto-generated catch block
     			e.printStackTrace();
@@ -78,13 +88,13 @@ public class MainActivity extends Activity {
     		if (in == null) {
     		    throw new IllegalArgumentException(
     		         "File: " + inputFileName + " not found");
-    		}
+    		}*/
     		model.read(in, null);
 
     				String queryString = 
     				
     				"prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
-    				"prefix ub: <http://www.lehigh.edu/~zhp2/2004/0401/univ-bench.owl#> "+
+    				"prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> "+
     				"select * "+
     				"where {?X rdf:type ub:GraduateStudent . "+
     				"?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>} ";
@@ -96,7 +106,7 @@ public class MainActivity extends Activity {
     		ResultSetFormatter.out(System.out, results, query);
     		Reasonerdrained = drained;
     		System.out.println("There was " + Reasonerdrained + "mAh" + " drained");
-    		System.out.println("Intent" + firstKeyName);
+    		System.out.println("Running : " + ontologyName);
     		qe.close();
     		
     		//finish();
