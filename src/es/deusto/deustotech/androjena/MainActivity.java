@@ -23,6 +23,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
@@ -50,6 +51,7 @@ public class MainActivity extends Activity {
 	private float OntologyLoaderDrained;
 	private BroadcastReceiver batteryInfoReceiver;
 	private String ontologyName;
+	private String ResultToCheck;
 
 
 
@@ -59,6 +61,9 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		
+		ResultToCheck = "OK";
+		
 		progressDialog = new ProgressDialog(this); 
 		// spinner (wheel) style dialog
 		progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER); 
@@ -137,8 +142,10 @@ public class MainActivity extends Activity {
     		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
     		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
     		System.out.println("Running : " + ontologyName);
+    		
+    		
     		write("log", "________________________________________"+ "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
-    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + s + "\n"
+    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+ "\n"
     		+"AndroJena Running : " + ontologyName+"\n________________________");
     		qe.close();
     		
@@ -149,10 +156,12 @@ public class MainActivity extends Activity {
         }
  
         @Override
-        protected void onPostExecute(Void result) {
+        protected void onPostExecute(Void results) {
             // put here everything that needs to be done after your async task finishes
             progressDialog.dismiss();
             stop();
+            finishWithResult();
+
             finish();
             
         }
@@ -197,14 +206,14 @@ public class MainActivity extends Activity {
 	        public void run() {	            
 	           // draw = draw + (bat());
 	        	float curret =bat(); 
-	        	drained =drained +(curret/7200);
+	        	drained =drained +(curret/64000);
 	            		//System.out.println("Current mA = " + curret + "mA"+ "\n"+
 						//"Capacity Drained = " + drained + "mAh"+ "\n");
 						
 	    		//batteryInfo=(TextView)findViewById(R.id.textView);
 
 	       }
-	   }, 0, 500 );
+	   }, 0, 50 );
 	}
 	public void stop() {
 	    timer.cancel();
@@ -257,6 +266,14 @@ public class MainActivity extends Activity {
 	      }
 	      return response;
 	   }
-	   
+	   private void finishWithResult()
+	   {
+	      Bundle conData = new Bundle();
+	      conData.putInt("results", 1);
+	      Intent intent = new Intent();
+	      intent.putExtras(conData);
+	      setResult(RESULT_OK, intent);
+	      finish();
+	   }
 	   
 }
