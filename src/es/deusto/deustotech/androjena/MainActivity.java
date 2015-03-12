@@ -50,8 +50,11 @@ public class MainActivity extends Activity {
 	private float Reasonerdrained;
 	private float OntologyLoaderDrained;
 	private BroadcastReceiver batteryInfoReceiver;
-	private String ontologyName;
+	private String ontologyName, queryName;
 	private String ResultToCheck;
+	private long startCountingTime;
+	private long stopCountingTime;
+	private float timeElapsed;
 
 
 
@@ -74,15 +77,25 @@ public class MainActivity extends Activity {
 		progressDialog.show(); 
 		Intent myIntent = getIntent(); // gets the previously created intent
 		ontologyName = myIntent.getStringExtra("ontologyName"); // will return "ontologyName"
+		queryName = myIntent.getStringExtra("queryName"); // will return "queryName"
+
 		// start async task
 		new MyAsyncTaskClass().execute();  
 		
 	}
+	protected void onStop(){
+		super.onStop();
+
+	}
+	
 	
 	private class MyAsyncTaskClass extends AsyncTask<Void, Void, Void> {
 		 
         @Override
         protected Void doInBackground(Void... params) {
+        	
+        	    // create lots of objects here and stash them somewhere
+        	
            // do your thing
         	OntModel model = ModelFactory.createOntologyModel( OntModelSpec.OWL_MEM_MICRO_RULE_INF);
     		//String inputFileName="univ-bench.owl";
@@ -95,64 +108,117 @@ public class MainActivity extends Activity {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-    		//InputStream in = null;
-    		/**try {
-    			//in = getAssets().open(ontologyName);
-    		} catch (IOException e) {
-    			// TODO Auto-generated catch block
-    			e.printStackTrace();
-    		}
-
-    		if (in == null) {
-    		    throw new IllegalArgumentException(
-    		         "File: " + inputFileName + " not found");
-    		}*/
+    		
     		start();//Starts timer that calculates the mAh drained
+    		startCountingTime= System.currentTimeMillis();
 
     		model.read(in, null);
 
-    				String queryString = 
-    				
-    				"prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
+    		String q1 = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
     				"prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> "+
     				"select * "+
     				"where {?X rdf:type ub:GraduateStudent . "+
     				"?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>} ";
+    		
+    		
+    		String q2 = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
+    				"prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> "+
+    				"select *"+
+    				"where { ?X rdf:type ub:Student ."+
+    				"?Y rdf:type ub:Faculty ."+
+    				 "?Z rdf:type ub:Course ."+
+    				 "?X ub:advisor ?Y ."+
+    				 "?Y ub:teacherOf ?Z ."+
+    				 "?X ub:takesCourse ?Z"+
+    				 "}";	
+    				
+    		String q3 = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
+    				"prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> "+
+    				"select *"+
+    				"where {"
+    				+ "?X rdf:type ub:Student"
+    				+ "}";
 
-    		Query query = QueryFactory.create(queryString);
-    		QueryExecution qe = QueryExecutionFactory.create(query, model);
-    		
-    		OntologyLoaderDrained = drained;
-    		
-    		com.hp.hpl.jena.query.ResultSet results =  qe.execSelect();
-    		
-    		//converts results to the string
-    		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    		PrintStream ps = new PrintStream(baos);
-    		ResultSetFormatter.out(ps, results, query) ;
-    		String s = "";
-    		try {
-				 s = new String(baos.toByteArray(), "UTF-8");
-			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    		System.out.println(s);
-    		Reasonerdrained = drained - OntologyLoaderDrained;
-    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
-    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
-    		System.out.println("Running : " + ontologyName);
-    		
-    		
-    		write("log", "________________________________________"+ "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
-    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+ "\n"
-    		+"AndroJena Running : " + ontologyName+"\n________________________");
-    		qe.close();
-    		
+    			
+    		String[]	queries		= null;
+    		 
+    	     if(queryName.equals("Query1")){
+    	     	queries = new String[] {q1};
+    	     }
+    	     if(queryName.equals("Query2")){
+    	      	queries = new String[] {q2};
+    	     }
+    	     if(queryName.equals("Query3")){
+    	      	queries = new String[] {q3};
+    	     }
+    				
+    		boolean NOTmeasured = true;
+	 		float PrewReasonerDrained = 0;
+	 		int qlength = queries.length;
+	 		
+    		for(int i= 0; i<qlength; i++){
+    			try {	
+    				
+    			String queryString = queries[i];
+    			System.out.println(queryString);
+	    		Query query = QueryFactory.create(queryString);
+	    		QueryExecution qe = QueryExecutionFactory.create(query, model);
+	    		//records how much loader drained of a battery
+	    		if(NOTmeasured){
+	   				//records how much loader drained of a battery
+	   				OntologyLoaderDrained = drained;	
+	   				write("ontLoader", OntologyLoaderDrained +"\n");
+	   				NOTmeasured = false;
+	   			}	    		
+	    		com.hp.hpl.jena.query.ResultSet results =  qe.execSelect();
+	    		
+	    		//converts results to the string
+	    		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	    		PrintStream ps = new PrintStream(baos);
+	    		ResultSetFormatter.out(ps, results, query) ;
+	    		String s = "";
+	    		try {
+					 s = new String(baos.toByteArray(), "UTF-8");
+				} catch (UnsupportedEncodingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+	    		System.out.println(s);
+	    		
+	    		//records how much reasoner drained.
+				Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
+				//keeps record of previous reasoner
+				PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
+				
+						//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
+				write("Times", "AndroJena loader :" +timeElapsed + "s");
+				startCountingTime= System.currentTimeMillis();
+				
+	    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
+	    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
+	    		System.out.println("Running : " + ontologyName);
+	    		
+	    		
+	    		write("log", "________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
+	    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
+	    		+"AndroJena Running : " + ontologyName+"\n________________________");
+	    		write("justdata", "\n"+Reasonerdrained +"\n");
+	    		write("Results", "\n"+s +"\n");
+
+
+	    		qe.close();
+    		} catch (OutOfMemoryError E) {
+				
+	    		}
     		//finish();
-    		
+    		}
+			write("ontLoader", "\n");
+			stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+			float timeElapsed2 = stopCountingTime;
+			float timeElapsed = timeElapsed2/1000;			//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
+			write("Times", "AndroJena Reasoner :" +timeElapsed + "s");
         	
-            return null;
+			return null;
         }
  
         @Override
@@ -168,32 +234,14 @@ public class MainActivity extends Activity {
         
 }
 	public  float bat(){		
-        registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        batteryInfoReceiver = new BroadcastReceiver() {
-			@Override
-			public void onReceive(Context context, Intent intent) {			
-				int  plugged= intent.getIntExtra(BatteryManager.EXTRA_PLUGGED,0);
-				String  technology= intent.getExtras().getString(BatteryManager.EXTRA_TECHNOLOGY);
-				int  temperature= intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE,0);
-				int  voltage= intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE,0);				
-				
+        
 				BatteryManager mBatteryManager =
 						(BatteryManager)getSystemService(Context.BATTERY_SERVICE);
 						Long energy =
 						mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);					
 				float currentdraw = energy;
 				draw = currentdraw;		
-				((TextView)findViewById(R.id.textView)).setText("              ANDROJENA REASONER"+"\n"+"Plugged: "+plugged+"\n"+
-						"Technology: "+technology+"\n"+
-						"Temperature: "+temperature+"\n"+
-						"Voltage: "+voltage+"\n"+
-						"Current mA = " + energy + "mA"+ "\n"+
-						"AndroJena reasoner Drained = " + Reasonerdrained + "mA"+ "\n"+
-						"Currentlly Drained = " + drained + "mAh"+ "\n");
-
-			}
-		};
-		return draw;
+				return draw;
 	}
 	
 	
@@ -204,14 +252,32 @@ public class MainActivity extends Activity {
 	    timer = new Timer();	   
 	    timer.schedule(new TimerTask() {
 	        public void run() {	            
-	           // draw = draw + (bat());
 	        	float curret =bat(); 
 	        	drained =drained +(curret/64000);
-	            		//System.out.println("Current mA = " + curret + "mA"+ "\n"+
-						//"Capacity Drained = " + drained + "mAh"+ "\n");
-						
-	    		//batteryInfo=(TextView)findViewById(R.id.textView);
+	        	runOnUiThread(new Runnable() {
 
+	        	    @Override
+	        	    public void run() {
+	        	    	stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+	    				float timeElapsed2 = stopCountingTime;
+	    				timeElapsed = timeElapsed2/1000;		
+		        		((TextView)findViewById(R.id.textView)).setText("Capacity Drained = " + drained + "mAh \n"+
+	    				"Time Elapsed: "+timeElapsed+"s");
+		        		//This if ABORTS the reasoning task because it took too long,
+		        		if(timeElapsed>900||drained>60){
+		        			write("log", "ABORTED due to Out Of Memory/Time \n"+"________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
+		        		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
+		        		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s"+"\n________________________");
+		        		    		write("justdata", "\n"+Reasonerdrained +"\n");
+		        		    		write("Results", "\n"+"NO RESULTS " +"\n");
+
+		        		    		stop();
+		        		            finishWithResult();
+		        		            finish();		   
+		        		}
+	        	    }
+	        	 });
+	        	
 	       }
 	   }, 0, 50 );
 	}
