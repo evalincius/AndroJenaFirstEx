@@ -14,6 +14,9 @@ import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -94,6 +97,7 @@ public class MainActivity extends Activity {
         @Override
         protected Void doInBackground(Void... params) {
         	
+        	
         	    // create lots of objects here and stash them somewhere
         	
            // do your thing
@@ -111,7 +115,16 @@ public class MainActivity extends Activity {
     		
     		start();//Starts timer that calculates the mAh drained
     		startCountingTime= System.currentTimeMillis();
-
+    		String[] arr = {"Query4"};
+    		List<String> queryList = 	Arrays.asList(arr);
+    		
+    		if(ontologyName.equals("University015.owl")){
+		 		if(queryList.contains(queryName)){
+		 			quiteAnApp();
+		 		}
+	 		}
+    		
+    		
     		model.read(in, null);
 
     		String q1 = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
@@ -123,14 +136,9 @@ public class MainActivity extends Activity {
     		
     		String q2 = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
     				"prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> "+
-    				"select *"+
-    				"where { ?X rdf:type ub:Student ."+
-    				"?Y rdf:type ub:Faculty ."+
-    				 "?Z rdf:type ub:Course ."+
-    				 "?X ub:advisor ?Y ."+
-    				 "?Y ub:teacherOf ?Z ."+
-    				 "?X ub:takesCourse ?Z"+
-    				 "}";	
+    				"select * "+
+    				"where {?X rdf:type ub:Student . "+
+    				"?X ub:takesCourse <http://www.Department0.University0.edu/GraduateCourse0>} ";
     				
     		String q3 = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
     				"prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> "+
@@ -138,6 +146,16 @@ public class MainActivity extends Activity {
     				"where {"
     				+ "?X rdf:type ub:Student"
     				+ "}";
+    		
+    		String q4 = "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> "+
+    				"prefix ub: <http://swat.cse.lehigh.edu/onto/univ-bench.owl#> "
+    				+ "prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>"+
+    				"select *"+
+    				"where {"
+    				//+ "?x rdfs:subClassOf ub:Employee"
+    				+ "?X rdfs:subClassOf ?Y"
+    				+ "}";
+    		
 
     			
     		String[]	queries		= null;
@@ -151,72 +169,81 @@ public class MainActivity extends Activity {
     	     if(queryName.equals("Query3")){
     	      	queries = new String[] {q3};
     	     }
+    	     if(queryName.equals("Query4")){
+    	        	queries = new String[] {q4};
+    	       }
     				
     		boolean NOTmeasured = true;
 	 		float PrewReasonerDrained = 0;
 	 		int qlength = queries.length;
 	 		
+	 		
+	 		
     		for(int i= 0; i<qlength; i++){
     			try {	
-    				
-    			String queryString = queries[i];
-    			System.out.println(queryString);
-	    		Query query = QueryFactory.create(queryString);
-	    		QueryExecution qe = QueryExecutionFactory.create(query, model);
-	    		//records how much loader drained of a battery
-	    		if(NOTmeasured){
-	   				//records how much loader drained of a battery
-	   				OntologyLoaderDrained = drained;	
-	   				write("ontLoader", OntologyLoaderDrained +"\n");
-	   				NOTmeasured = false;
-	   			}	    		
-	    		com.hp.hpl.jena.query.ResultSet results =  qe.execSelect();
-	    		
-	    		//converts results to the string
-	    		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-	    		PrintStream ps = new PrintStream(baos);
-	    		ResultSetFormatter.out(ps, results, query) ;
-	    		String s = "";
-	    		try {
-					 s = new String(baos.toByteArray(), "UTF-8");
-				} catch (UnsupportedEncodingException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-	    		System.out.println(s);
-	    		
-	    		//records how much reasoner drained.
-				Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
-				//keeps record of previous reasoner
-				PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
-				
-						//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
-				write("Times", "AndroJena loader :" +timeElapsed + "s");
-				startCountingTime= System.currentTimeMillis();
-				
-	    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
-	    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
-	    		System.out.println("Running : " + ontologyName);
-	    		
-	    		
-	    		write("log", "________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
-	    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
-	    		+"AndroJena Running : " + ontologyName+"\n________________________");
-	    		write("justdata", "\n"+Reasonerdrained +"\n");
-	    		write("Results", "\n"+s +"\n");
-
-
-	    		qe.close();
-    		} catch (OutOfMemoryError E) {
-				
+	    				
+	    			String queryString = queries[i];
+	    			System.out.println(queryString);
+		    		Query query = QueryFactory.create(queryString);
+		    		QueryExecution qe = QueryExecutionFactory.create(query, model);
+		    		//records how much loader drained of a battery
+		    		if(NOTmeasured){
+		   				//records how much loader drained of a battery
+		   				OntologyLoaderDrained = drained;	
+		   				write("ontLoader",""+ OntologyLoaderDrained);
+		   				NOTmeasured = false;
+		   			}	    
+		    		stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+					float timeElapsed2 = stopCountingTime;
+					timeElapsed = timeElapsed2/1000;
+					write("LoaderTime", "" +timeElapsed);
+		    		startCountingTime= System.currentTimeMillis();
+		    		
+		    		
+		    		com.hp.hpl.jena.query.ResultSet results =  qe.execSelect();
+		    		
+		    		//converts results to the string
+		    		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		    		PrintStream ps = new PrintStream(baos);
+		    		ResultSetFormatter.out(ps, results, query) ;
+		    		String s = "";
+		    		try {
+						 s = new String(baos.toByteArray(), "UTF-8");
+					} catch (UnsupportedEncodingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+		    		System.out.println(s);
+		    		
+		    		//records how much reasoner drained.
+					Reasonerdrained = drained - OntologyLoaderDrained- PrewReasonerDrained;
+					//keeps record of previous reasoner
+					PrewReasonerDrained = PrewReasonerDrained + Reasonerdrained;
+					
+					
+					
+		    		System.out.println("There was " + OntologyLoaderDrained + "mAh" + " drained by ontology loader");
+		    		System.out.println("There was " + Reasonerdrained + "mAh" + " drained by reasoner");
+		    		System.out.println("Running : " + ontologyName);
+		    		
+		    		
+		    		write("log", "________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
+		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
+		    		+"AndroJena Running : " + ontologyName+"\n________________________");
+		    		write("justdata",""+ Reasonerdrained );
+		    		write("Results", s );
+	
+	
+		    		qe.close();
+    			} catch (OutOfMemoryError E) {
+					System.err.println(E);
+					quiteAnApp();
 	    		}
-    		//finish();
     		}
-			write("ontLoader", "\n");
 			stopCountingTime = System.currentTimeMillis()-startCountingTime;	
 			float timeElapsed2 = stopCountingTime;
-			float timeElapsed = timeElapsed2/1000;			//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
-			write("Times", "AndroJena Reasoner :" +timeElapsed + "s");
+			timeElapsed = timeElapsed2/1000;			//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
+			write("ReasonerTime", "" +timeElapsed );
         	
 			return null;
         }
@@ -227,9 +254,8 @@ public class MainActivity extends Activity {
             progressDialog.dismiss();
             stop();
             finishWithResult();
-
             finish();
-            
+            System.exit(0);
         }
         
 }
@@ -265,15 +291,7 @@ public class MainActivity extends Activity {
 	    				"Time Elapsed: "+timeElapsed+"s");
 		        		//This if ABORTS the reasoning task because it took too long,
 		        		if(timeElapsed>900||drained>60){
-		        			write("log", "ABORTED due to Out Of Memory/Time \n"+"________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
-		        		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
-		        		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s"+"\n________________________");
-		        		    		write("justdata", "\n"+Reasonerdrained +"\n");
-		        		    		write("Results", "\n"+"NO RESULTS " +"\n");
-
-		        		    		stop();
-		        		            finishWithResult();
-		        		            finish();		   
+		        			quiteAnApp();
 		        		}
 	        	    }
 	        	 });
@@ -339,7 +357,23 @@ public class MainActivity extends Activity {
 	      Intent intent = new Intent();
 	      intent.putExtras(conData);
 	      setResult(RESULT_OK, intent);
-	      finish();
+	   }
+	   public void quiteAnApp(){
+		   
+		   Reasonerdrained = drained-OntologyLoaderDrained;
+			write("log", "ABORTED due to Out Of Memory/Time \n"+"________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
+		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
+		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s"+"\n________________________");
+		    		write("justdata", ""+Reasonerdrained);
+		    		write("Results", "Results Aborted ");
+		    		stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+					float timeElapsed2 = stopCountingTime;
+					timeElapsed = timeElapsed2/1000;			//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
+					write("ReasonerTime", "" +timeElapsed );
+		            progressDialog.dismiss();
+		    		stop();
+		            finishWithResult();
+		            finish();		   
 	   }
 	   
 }
