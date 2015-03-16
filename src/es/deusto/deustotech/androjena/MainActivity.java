@@ -118,11 +118,7 @@ public class MainActivity extends Activity {
     		String[] arr = {"Query4"};
     		List<String> queryList = 	Arrays.asList(arr);
     		
-    		if(ontologyName.equals("University015.owl")){
-		 		if(queryList.contains(queryName)){
-		 			quiteAnApp();
-		 		}
-	 		}
+    		
     		
     		
     		model.read(in, null);
@@ -279,7 +275,7 @@ public class MainActivity extends Activity {
 	    timer.schedule(new TimerTask() {
 	        public void run() {	            
 	        	float curret =bat(); 
-	        	drained =drained +(curret/64000);
+	        	drained =drained +(curret/3300);
 	        	runOnUiThread(new Runnable() {
 
 	        	    @Override
@@ -290,14 +286,14 @@ public class MainActivity extends Activity {
 		        		((TextView)findViewById(R.id.textView)).setText("Capacity Drained = " + drained + "mAh \n"+
 	    				"Time Elapsed: "+timeElapsed+"s");
 		        		//This if ABORTS the reasoning task because it took too long,
-		        		if(timeElapsed>900||drained>60){
+		        		if(timeElapsed>300||drained>45){
 		        			quiteAnApp();
 		        		}
 	        	    }
 	        	 });
 	        	
 	       }
-	   }, 0, 50 );
+	   }, 0, 1000);
 	}
 	public void stop() {
 	    timer.cancel();
@@ -373,7 +369,8 @@ public class MainActivity extends Activity {
 		            progressDialog.dismiss();
 		    		stop();
 		            finishWithResult();
-		            finish();		   
+		            finish();
+		            System.exit(0);
 	   }
 	   
 }
