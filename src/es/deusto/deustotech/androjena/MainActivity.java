@@ -24,6 +24,7 @@ import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import com.hp.hpl.jena.ontology.OntModel;
@@ -62,6 +63,8 @@ public class MainActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+	    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
 		
 		
 		progressDialog = new ProgressDialog(this); 
@@ -107,6 +110,7 @@ public class MainActivity extends Activity {
 			}
     		
     		start();//Starts timer that calculates the mAh drained
+    		getVoltage();
     		startCountingTime= System.currentTimeMillis();
     		
     		
@@ -223,7 +227,7 @@ public class MainActivity extends Activity {
 		    		
 		    		write("log", "________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
 		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
-		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s"+"WattsDrained"+watts+"W"+"\n________________________");
+		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s\n"+"WattsDrained"+watts+"W"+"\n________________________");
 		    		write("justdata",""+ Reasonerdrained );
 		    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
 		    		write("Results", s );
@@ -278,7 +282,7 @@ public class MainActivity extends Activity {
 	        	//were some error rate determined and diviation from 3300 covers the loss of data that
 	        	//was missed to be recorded. Calculated by measuring amount of current drained per 1% and finding 
 	        	//the constant that derives 31mah
-	        	watts = (drained*mvoltage/1000)*3600/1000;
+	        	watts = (float) ((drained*mvoltage/1000)*3.6);
 	        	runOnUiThread(new Runnable() {
 
 	        	    @Override
@@ -362,15 +366,14 @@ public class MainActivity extends Activity {
 		   
 		   Reasonerdrained = drained-OntologyLoaderDrained;
 		   ReasonerdrainedWatts = watts-OntologyLoaderDrainedWatts;
-
+		   stopCountingTime = System.currentTimeMillis()-startCountingTime;	
+		   float timeElapsed = (float) (stopCountingTime/1000.0);	
 			write("log", "ABORTED due to Out Of Memory/Time \n"+"________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
 		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
-		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s"+"WattsDrained"+watts+"W"+"\n________________________");
+		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s\n"+"WattsDrained"+watts+"W"+"\n________________________");
 		    		write("justdata", ""+Reasonerdrained);
+		    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
 		    		write("Results", "Results Aborted ");
-		    		stopCountingTime = System.currentTimeMillis()-startCountingTime;	
-					float timeElapsed2 = stopCountingTime;
-					timeElapsed = timeElapsed2/1000;			//System.out.println("Time elapsed when runnig simulation :" +(stopCountingTime/1000) + "s" );
 					write("ReasonerTime", "" +timeElapsed );
 		            progressDialog.dismiss();
 		    		stop();
