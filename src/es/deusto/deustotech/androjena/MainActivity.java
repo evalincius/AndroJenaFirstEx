@@ -16,16 +16,24 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.DialogInterface.OnCancelListener;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
+import android.view.View;
 import android.view.WindowManager;
+import android.view.View.OnClickListener;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntModelSpec;
@@ -44,7 +52,7 @@ public class MainActivity extends Activity {
 	private float Reasonerdrained;
 	private float OntologyLoaderDrained;
 	
-	private String ontologyName, queryName;
+	private String datasetFileName, queryName, ontologyName;
 	private long startCountingTime;
 	private long stopCountingTime;
 	private float timeElapsed;
@@ -64,24 +72,50 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 	    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+	    
+	    Intent myIntent = getIntent(); // gets the previously created intent
+		datasetFileName = myIntent.getStringExtra("ontologyFile"); // will return the name of ontology file
+		queryName = myIntent.getStringExtra("queryName"); // will return "queryName"
+		ontologyName = myIntent.getStringExtra("ontologyName"); //returns the name of ontology size
+		if(datasetFileName==null){
+			System.out.println("CLOSED. Dataset Empty");           
+    		Thread thread = new Thread(){
+                @Override
+               public void run() {
+                    try {
+                       Thread.sleep(3500); // As I am using LENGTH_LONG in Toast
+                        	finish();	
+                        	System.exit(0);
+                   } catch (Exception e) {
+                       e.printStackTrace();
+                   }
+                }  
+              };
+              
+              Toast.makeText(getApplicationContext(), "Launch From The PowerBenchMark app", Toast.LENGTH_LONG).show();
+              thread.start();
 
-		
+    	}else{
 		
 		progressDialog = new ProgressDialog(this); 
 		// spinner (wheel) style dialog
 		progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER); 
 		// better yet - use a string resource getString(R.string.your_message)
-		progressDialog.setMessage("Loading data"); 
+		progressDialog.setMessage("Please Wait"); 
 		progressDialog.setCanceledOnTouchOutside(false);
+		progressDialog.setCancelable(true);
+		progressDialog.setOnCancelListener(new OnCancelListener() {
+
+	        @Override
+	        public void onCancel(DialogInterface dialog) {
+	        	onBackPressed();
+	        }});
 		// display dialog
 		progressDialog.show(); 
-		Intent myIntent = getIntent(); // gets the previously created intent
-		ontologyName = myIntent.getStringExtra("ontologyName"); // will return "ontologyName"
-		queryName = myIntent.getStringExtra("queryName"); // will return "queryName"
-
+		
 		// start async task
 		new MyAsyncTaskClass().execute();  
-		
+    	}
 	}
 	protected void onStop(){
 		super.onStop();
@@ -100,7 +134,7 @@ public class MainActivity extends Activity {
            // do your thing
         	OntModel model = ModelFactory.createOntologyModel( OntModelSpec.OWL_MEM_MICRO_RULE_INF);
     		//String inputFileName="univ-bench.owl";
-        	File file = new File("storage/emulated/0/Download/" +ontologyName);
+        	File file = new File("storage/emulated/0/Download/" +datasetFileName);
 
     		InputStream in = null;
 			try {
@@ -151,16 +185,16 @@ public class MainActivity extends Activity {
     			
     		String[]	queries		= null;
     		 
-    	     if(queryName.equals("Query1")){
+    	     if(queryName.equals("Instance Retrieval")){
     	     	queries = new String[] {q1};
     	     }
-    	     if(queryName.equals("Query2")){
+    	     if(queryName.equals("Inference & Instance Retrieval")){
     	      	queries = new String[] {q2};
     	     }
-    	     if(queryName.equals("Query3")){
+    	     if(queryName.equals("Inference")){
     	      	queries = new String[] {q3};
     	     }
-    	     if(queryName.equals("Query4")){
+    	     if(queryName.equals("Classification")){
     	        	queries = new String[] {q4};
     	       }
     				
@@ -225,9 +259,16 @@ public class MainActivity extends Activity {
 		    		//System.out.println("Running : " + ontologyName);
 		    		
 		    		
-		    		write("log", "________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
-		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
-		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s\n"+"WattsDrained"+watts+"W"+"\n________________________");
+		    		write("log", "________________________________________\n"
+		    		+"ANDROJENA REASONER:\n"
+		    		+"Reasoning task: "+ queryName + "  \n"
+		    		+ "Ontology size : " + ontologyName+ "\n"
+		    		+"Reasoning task drained: " +Reasonerdrained+"mAh"+"\n"
+		    		+ "Ontology loader drained: " + OntologyLoaderDrained +"mAh"+"\n" 
+		    		+ "AndroJena drained total: " +drained+"mAh"+ "\n"
+		    		+ "Time elapsed: "+timeElapsed+"s\n"
+		    		+ "Power consumed: "+watts+"W"
+		    		+"\n________________________");
 		    		write("justdata",""+ Reasonerdrained );
 		    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
 		    		write("Results", s );
@@ -236,7 +277,7 @@ public class MainActivity extends Activity {
 		    		qe.close();
     			} catch (OutOfMemoryError E) {
 					System.err.println(E);
-					quiteAnApp();
+					quiteAnApp(1);
 	    		}
     		}
 			stopCountingTime = System.currentTimeMillis()-startCountingTime;	
@@ -252,7 +293,7 @@ public class MainActivity extends Activity {
             // put here everything that needs to be done after your async task finishes
             progressDialog.dismiss();
             stop();
-            finishWithResult();
+            finishWithResult(1);
             finish();
             System.exit(0);
         }
@@ -289,12 +330,15 @@ public class MainActivity extends Activity {
 	        	    public void run() {
 	        	    	stopCountingTime = System.currentTimeMillis()-startCountingTime;	
 	    				float timeElapsed = (float) (stopCountingTime/1000.0);	
-	    				((TextView)findViewById(R.id.textView)).setText("Capacity Drained = " + drained + "mAh \n"+ 
-			        			"Time elapsed : " +timeElapsed + "s\n"+"Voltage: "+mvoltage+"V"
-			        					+ "\nPower used: "+watts+"W");
+	    				((TextView)findViewById(R.id.textView)).setText("ANDROJENA REASONER:\n"
+	    			    												+"Reasoning task: "+ queryName + " \n"
+	    			    												+ "Ontology size : " + ontologyName+ "\n"
+	    																+"Capacity drained = " + drained + "mAh \n"
+	    																+"Time elapsed : " +timeElapsed + "s"
+	    																+ "\nPower consumed: "+watts+"W");
 		        		//This if ABORTS the reasoning task because it took too long,
 		        		if(timeElapsed>300||drained>45){
-		        			quiteAnApp();
+		        			quiteAnApp(1);
 		        		}
 	        	    }
 	        	 });
@@ -354,30 +398,37 @@ public class MainActivity extends Activity {
 	      }
 	      return response;
 	   }
-	   private void finishWithResult()
+	   private void finishWithResult(int a)
 	   {
 	      Bundle conData = new Bundle();
-	      conData.putInt("results", 1);
+	      conData.putInt("results", a);
 	      Intent intent = new Intent();
 	      intent.putExtras(conData);
 	      setResult(RESULT_OK, intent);
 	   }
-	   public void quiteAnApp(){
+	   public void quiteAnApp(int a){
 		   
 		   Reasonerdrained = drained-OntologyLoaderDrained;
 		   ReasonerdrainedWatts = watts-OntologyLoaderDrainedWatts;
 		   stopCountingTime = System.currentTimeMillis()-startCountingTime;	
 		   float timeElapsed = (float) (stopCountingTime/1000.0);	
-			write("log", "ABORTED due to Out Of Memory/Time \n"+"________________________________________\n"+"Query: "+ queryName + "\n"+"AndroJena Reasoner " +Reasonerdrained+"mAh"+"\n"
-		    		+ "AndroJena ont loader " + OntologyLoaderDrained +"mAh"+"\n" + "AndroJena Total: " +drained+"mAh"+ "\n"
-		    		+"AndroJena Running : " + ontologyName+"\n Time Elapsed: "+timeElapsed+"s\n"+"WattsDrained"+watts+"W"+"\n________________________");
+		   write("log", "________ABORTED____________\n"
+		    		+"ANDROJENA REASONER:\n"
+		    		+"Reasoning task: "+ queryName + "\n"
+		    		+ "Ontology size : " + ontologyName+ "\n"
+		    		+"Reasoning task drained: " +Reasonerdrained+"mAh"+"\n"
+		    		+ "Ontology loader drained: " + OntologyLoaderDrained +"mAh"+"\n" 
+		    		+ "AndroJena drained total: " +drained+"mAh"+ "\n"
+		    		+ "Time elapsed: "+timeElapsed+"s\n"
+		    		+ "Power consumed: "+watts+"W"
+		    		+"\n________________________");
 		    		write("justdata", ""+Reasonerdrained);
 		    		write("PowerReasoner", ""+ ReasonerdrainedWatts);
 		    		write("Results", "Results Aborted ");
 					write("ReasonerTime", "" +timeElapsed );
 		            progressDialog.dismiss();
 		    		stop();
-		            finishWithResult();
+		            finishWithResult(a);
 		            finish();
 		            System.exit(0);
 	   }
@@ -391,5 +442,53 @@ public class MainActivity extends Activity {
 			};
 			registerReceiver(this.batteryInfoReceiver,	new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
 		}
+	   
+	   
+	   /**
+	    * Method created the pop up dialog asking if user
+	    * wants really quite and application.
+	    */
+	   @Override
+	   public void onBackPressed() {
+	   	 
+	   		final Dialog dialog = new Dialog(this);
+				dialog.setContentView(R.layout.customexit);			
+				dialog.setTitle("AndroJena");
+				// set the custom dialog components - text, image and button
+				TextView text = (TextView) dialog.findViewById(R.id.text);
+				text.setText("Are you sure you want");
+				TextView text2 = (TextView) dialog.findViewById(R.id.text2);
+				text2.setText("to CANCEL reasoning?");
+				ImageView image = (ImageView) dialog.findViewById(R.id.image);
+				image.setImageResource(R.drawable.cancel); 
+				Button dialogButton = (Button) dialog.findViewById(R.id.btnok);
+				Button dialogButton2 = (Button) dialog.findViewById(R.id.btncancel);
+				// if button is clicked, close the custom dialog
+				dialogButton.setOnClickListener(new OnClickListener() {
+					@Override
+					public void onClick(View v) {
+						quiteAnApp(-1);
+	             		dialog.dismiss();             		
+					}
+				});
+				
+				dialogButton2.setOnClickListener(new OnClickListener() {
+					@Override
+					public void onClick(View v) {
+						progressDialog.show(); 
+						dialog.dismiss();
+						
+					}
+				});
+				
+				dialog.setOnCancelListener(new OnCancelListener() {
+
+			        @Override
+			        public void onCancel(DialogInterface dialog) {
+			    		progressDialog.show(); 
+			        }});
+	 
+				dialog.show();
+	   }
 	   
 }
